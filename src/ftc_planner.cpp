@@ -72,10 +72,10 @@ namespace ftc_local_planner
         bool first_use = false;
         if(first_setPlan_)
         {
-            if(config_.join_obstacle){
+            /* if(config_.join_obstacle){
                 //init joincostmap with local an global costmap.
                 joinCostmap_->initialize(costmap_ros_, global_costmap_ros_);
-            }
+            } */
 
             first_setPlan_ = false;
             ftc_local_planner::getXPose(*tf_,global_plan_, costmap_ros_->getGlobalFrameID(),old_goal_pose_,global_plan_.size()-1);
@@ -121,7 +121,7 @@ namespace ftc_local_planner
         if(rotate_to_global_plan_)
         {
             double angle_to_global_plan = calculateGlobalPlanAngle(current_pose, global_plan_, checkMaxDistance(current_pose));
-            rotate_to_global_plan_ = rotateToOrientation(angle_to_global_plan, cmd_vel, 0.1);
+            rotate_to_global_plan_ = rotateToOrientation(angle_to_global_plan, cmd_vel, 0.05);
         }
         //Second part of the routine. Drive alonge the global plan.
         else
@@ -193,7 +193,7 @@ namespace ftc_local_planner
             tf::poseStampedTFToMsg(p, pose);
             transformed_global_plan_.push_back(pose);
 
-            max_point = i-1;
+            max_point = i; //i-1;
             //If distance higher than maximal moveable distance in sim_time.
             if(distance > (config_.max_x_vel*config_.sim_time))
             {
@@ -233,7 +233,7 @@ namespace ftc_local_planner
         }
         double angle = 0;
         double current_th = tf::getYaw(current_pose.getRotation());
-        for(int i = 0; i <= point; i++)
+        for(int i = 1; i <= point; i++)
         {
             geometry_msgs::PoseStamped x_pose;
             x_pose=transformed_global_plan_.at(i);
@@ -245,14 +245,13 @@ namespace ftc_local_planner
         }
 
         //average
-        angle = angle/(point+1);
+        angle = angle/(point);
 
         return angles::shortest_angular_distance(current_th, angle);
     }
 
     bool FTCPlanner::rotateToOrientation(double angle, geometry_msgs::Twist& cmd_vel, double accuracy)
     {
-
         if((cmd_vel_linear_x_  - 0.1)  >= 0){
             cmd_vel.linear.x = cmd_vel_linear_x_ - 0.1;
             cmd_vel_linear_x_ = cmd_vel_linear_x_ - 0.1;
@@ -473,14 +472,14 @@ namespace ftc_local_planner
             {
                 if(!rotate_to_global_plan_)
                 {
-                    ROS_INFO("FTCPlanner: Obstacel detected. Start routine new.");
+                    ROS_INFO("FTCPlanner: Obstacel detected. Start routine new [costs = %u, previous_costs = %u].", costs, previous_cost);
                 }
                 rotate_to_global_plan_ = true;
 
                 //Possible collision
                 if(costs > 127 && costs > previous_cost)
                 {
-                    ROS_WARN("FTCPlanner: Possible collision. Stop local planner.");
+                    ROS_WARN("FTCPlanner: Possible collision. Stop local planner [costs = %u, previous_costs = %u].", costs, previous_cost);
                     return false;
                 }
             }
